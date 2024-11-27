@@ -2,13 +2,21 @@ const { Connection, PublicKey } = require('@solana/web3.js');
 const TelegramBot = require('node-telegram-bot-api');
 require('dotenv').config();
 
-// Telegram config
+/**
+ * Telegram Bot Configuration
+ * Setup and initialization of Telegram bot for transaction notifications
+ * Requires environment variables for secure token and chat ID storage
+ */
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID;
-const DISABLE_TELEGRAM_MESSAGES = process.env.DISABLE_TELEGRAM_MESSAGES;;
+const DISABLE_TELEGRAM_MESSAGES = process.env.DISABLE_TELEGRAM_MESSAGES;
 const bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
 
-// Wallets to track
+/**
+ * Wallet Configuration
+ * List of Solana wallet addresses to monitor for transactions
+ * Each wallet will be tracked for specific DEX interactions
+ */
 let TRACKING_WALLETS = [
   '5szGx4sTngM9528j1pN3ap8fbnWwdByHrvopBqLFu9PW',
   'BXvikrCePUMXyrvTvyyp3jddzL3KNvcJELQcET5eBFkh',
@@ -18,7 +26,11 @@ let TRACKING_WALLETS = [
   '3JPYL9xEPFjefV3tccrUwhLzME1mMq2dQSDeDebgzQi6',
 ];
 
-// Programs id to track
+/**
+ * DEX Program IDs Configuration
+ * Mapping of different DEX programs on Solana to track specific interactions
+ * Includes Jupiter, Raydium, and Pump.fun platforms
+ */
 const PROGRAMS = {
   JUPITER: 'JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4',
   RAYDIUM: '675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8',
@@ -26,7 +38,13 @@ const PROGRAMS = {
   PUMP_FUN_TOKEN_MINT_AUTH: 'TSLvdd1pWpHVjahSpsvCXUbgwsL3JAcvokwaKt1eokM',
 };
 
-// Format string for Telegram Message
+/**
+ * Formats JSON data into a readable string format for Telegram messages
+ * Recursively processes nested objects and creates a formatted string
+ * 
+ * @param {Object} jsonData - The JSON data to format
+ * @returns {string} Formatted string representation of the JSON data
+ */
 const formatJsonToString = (jsonData) => {
   const result = [];
 
@@ -47,13 +65,23 @@ const formatJsonToString = (jsonData) => {
   return result.join('\n');
 };
 
-// Send message on bot Telegram
+/**
+ * Sends a message to the configured Telegram chat
+ * Respects the DISABLE_TELEGRAM_MESSAGES flag for testing environments
+ * 
+ * @param {string} message - Message to send to Telegram
+ */
 const sendTelegramMessage = async (message) => {
   if (DISABLE_TELEGRAM_MESSAGES) return;
   await bot.sendMessage(ADMIN_CHAT_ID, message);
 };
 
-// Print tracked wallet on bot Telegram
+/**
+ * Prints the list of tracked wallets to Telegram
+ * Formats the wallet addresses in a numbered list
+ * 
+ * @param {string[]} wallets - Array of wallet addresses being tracked
+ */
 const printTrackedWalletTg = async (wallets) => {
   if (DISABLE_TELEGRAM_MESSAGES) return;
   let msgStr = 'Tracked wallets\n';
@@ -63,11 +91,25 @@ const printTrackedWalletTg = async (wallets) => {
   await bot.sendMessage(ADMIN_CHAT_ID, msgStr);
 };
 
+/**
+ * TokenUtils Class
+ * Utility class for token-related operations on Solana
+ * Handles token mint address retrieval and balance calculations
+ */
 class TokenUtils {
+  /**
+   * @param {Connection} connection - Solana RPC connection instance
+   */
   constructor(connection) {
     this.connection = connection;
   }
 
+  /**
+   * Retrieves the mint address for a given token account
+   * 
+   * @param {string} accountAddress - Token account address
+   * @returns {Promise<string|null>} Token mint address or null if not found
+   */
   async getTokenMintAddress(accountAddress) {
     try {
       const accountInfo = await this.connection.getParsedAccountInfo(
@@ -80,6 +122,13 @@ class TokenUtils {
     }
   }
 
+  /**
+   * Calculates SOL balance changes for a transaction
+   * Determines if the transaction was a buy or sell based on balance change
+   * 
+   * @param {Object[]} transactionDetails - Transaction information from Solana
+   * @returns {Object|null} Transaction type and balance change amount
+   */
   calculateNativeBalanceChanges(transactionDetails) {
     try {
       const preBalance = transactionDetails[0].meta.preBalances[0];
@@ -97,12 +146,27 @@ class TokenUtils {
   }
 }
 
+/**
+ * TransactionParser Class
+ * Handles parsing of Solana transactions to extract relevant swap information
+ * Analyzes token transfers and balance changes
+ */
 class TransactionParser {
+  /**
+   * @param {Connection} connection - Solana RPC connection instance
+   */
   constructor(connection) {
     this.connection = connection;
     this.tokenUtils = new TokenUtils(connection);
   }
 
+  /**
+   * Parses transaction details to extract swap information
+   * 
+   * @param {Object[]} txDetails - Transaction details from Solana
+   * @param {Object} dexInfo - Information about the DEX used
+   * @returns {Promise<Object|null>} Parsed transaction information or null if invalid
+   */
   async parseTransaction(txDetails, dexInfo) {
     try {
       if (!txDetails || !txDetails[0]) return null;
@@ -115,7 +179,7 @@ class TransactionParser {
       const signerAccount = accountKeys.find((account) => account.signer);
       const owner = signerAccount?.pubkey.toString();
 
-      // Analyze transfered token
+      // Extract token transfers from instructions
       const transfers = [];
       txDetails[0].meta?.innerInstructions?.forEach((instruction) => {
         instruction.instructions.forEach((ix) => {
@@ -131,7 +195,7 @@ class TransactionParser {
 
       if (transfers.length === 0) return null;
 
-      // Find token in and out
+      // Analyze first and last transfers to determine swap details
       const firstTransfer = transfers[0];
       const lastTransfer = transfers[transfers.length - 1];
 
@@ -162,12 +226,26 @@ class TransactionParser {
   }
 }
 
+/**
+ * SolanaMonitor Class
+ * Main class for monitoring Solana wallet activities
+ * Tracks transactions and DEX interactions for specified wallets
+ */
 class SolanaMonitor {
+  /**
+   * @param {string} rpcUrl - Solana RPC endpoint URL
+   */
   constructor(rpcUrl) {
     this.connection = new Connection(rpcUrl);
     this.parser = new TransactionParser(this.connection);
   }
 
+  /**
+   * Starts monitoring specified wallets for transactions
+   * Sets up log listeners for each wallet
+   * 
+   * @param {string[]} wallets - Array of wallet addresses to monitor
+   */
   async monitorWallets(wallets) {
     wallets.forEach((wallet) => {
       this.connection.onLogs(
@@ -200,6 +278,12 @@ class SolanaMonitor {
     });
   }
 
+  /**
+   * Identifies the DEX used in a transaction based on program IDs
+   * 
+   * @param {string[]} logs - Transaction logs
+   * @returns {Object} DEX information including name and operation type
+   */
   identifyDex(logs) {
     if (!logs?.length) return { dex: null, type: null };
 
@@ -222,17 +306,19 @@ class SolanaMonitor {
   }
 }
 
-// Function for manage the order of Telegram bot messages
+/**
+ * Message Manager
+ * Handles the initialization sequence of Telegram bot messages
+ * Sends startup notifications and prints tracked wallet information
+ */
 const messageManager = async () => {
   console.log('DISABLE_TELEGRAM_MESSAGES:', DISABLE_TELEGRAM_MESSAGES);
-  // Telegram start message
   await sendTelegramMessage('Wallet Tracker started.');
   await sendTelegramMessage('Monitoring.');
-  // Telegram print wallets
   await printTrackedWalletTg(TRACKING_WALLETS);
 };
 
-// Start
+// Initialize and start the monitoring system
 const monitor = new SolanaMonitor('https://api.mainnet-beta.solana.com');
 monitor.monitorWallets(TRACKING_WALLETS);
 messageManager();
