@@ -48,7 +48,7 @@ ADMIN_CHAT_ID=xxx             # Your Telegram chat ID to receive notifications
 DISABLE_TELEGRAM_MESSAGES=0   # Set to 1 to disable Telegram notifications
 ```
 
-4. Change wallets to track (optional)
+4. Change wallets to track (optional)  
 Go to ``` server.js ``` and add/remove the wallets you want to track in the ``` TRACKING_WALLETS  ``` array
 
 5. Run the project
