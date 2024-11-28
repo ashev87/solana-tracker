@@ -47,6 +47,11 @@ TELEGRAM_BOT_TOKEN=xxx        # Your Telegram bot token from BotFather
 ADMIN_CHAT_ID=xxx             # Your Telegram chat ID to receive notifications
 DISABLE_TELEGRAM_MESSAGES=0   # Set to 1 to disable Telegram notifications
 ```
+
+4. Run the project
+
+``` npm start ```
+
 ## 📫 Contact
 
 - X: [@Simoblaster](https://x.com/simoblaster)
