@@ -61,4 +61,5 @@ Go to ``` server.js ``` and add/remove the wallets you want to track in the ``` 
 - Email: saturno.simone@gmail.com
 
 If you find this project useful, feel free to support:
+`Solana wallet`
 `AQpMiPhc8eBoU6jy9FKqUb5QK4VfwVt69yiFuZLTCozq`
